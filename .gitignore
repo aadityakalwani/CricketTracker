@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# Live logged-in Play-Cricket session — never commit
+.pc-profile/
+
+# Local secrets / scratch
+.env
+debug-*.png
+notion-export*.csv
+*.zip
