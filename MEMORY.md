@@ -46,8 +46,12 @@ code, plaintext password on disk). PLAN §5.1 corrected.
   Gordon's, Rotherfield Park, Development Team, Old Basing 3s, Holybourne CC, U19.
   NOTE: Notion has NO MatchID/venue/result/competition/toss/bat-pos — those are
   the Play-Cricket "extend" columns (plan §6) added after the mirror.
-- **Repo created PRIVATE:** github.com/aadityakalwani/CricketTracker (main).
-  .venv gitignored; `.pc-profile/` (live session) gitignored.
+- **Repo PUBLIC:** github.com/aadityakalwani/CricketTracker (main). Started
+  private, made public 2026-06-29 after a clean sensitive-info scan (no creds,
+  no private notes). `.venv` + `.pc-profile/` (live session) gitignored.
+- **Commits must NOT credit Claude** (no co-author/session trailers) — Aadi
+  wants no trace of AI usage on this public repo. History was rewritten to strip
+  them. Overrides the global CLAUDE.md footer rule.
 - **P1 written + smoke-tested:** `cricket_scraper.py` — `--login` (visible Chrome,
   manual sign-in, persistent profile) + `--check` (headless session probe +
   debug screenshot). Imports/`--help` verified. NOT yet run against the real
