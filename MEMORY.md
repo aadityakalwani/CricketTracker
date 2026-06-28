@@ -65,8 +65,29 @@ code, plaintext password on disk). PLAN §5.1 corrected.
   name-based selector is a guess (no DOM recon yet) — tighten after first run.
 - **Sheet not created yet** — create fresh Google Sheet + Log tab when migrating.
 
+### 2026-06-29 (session 3) — P2 DONE, big architecture win
+- **Notion export received:** Desktop zip → `..._all.csv` = **90 games** (extracted
+  to /tmp/ctexport; original zip on Desktop). This is the migration source.
+- **Login verified:** Aadi ran `--login`; headless session reuse works (loaded
+  authenticated pages fine).
+- **ARCHITECTURE CHANGE — ResultsVault JSON, not HTML scraping.** The scorecard
+  tab is an ECB widget that fetches `api.resultsvault.co.uk/rv/<org>/matches/
+  <rvid>/?apiid=1003`. Auth = `x-ias-api-request` header the widget makes. We
+  harvest the widget's own JSON response (no token cracking). Supersedes plan
+  §3/§5.3 HTML approach. JSON has batting/bowling/fielding + full context.
+- **P2 COMPLETE + verified live:** `parse_match.py` (pure, tested) +
+  `cricket_scraper.py --game URL` (harvest+parse). Test fixture
+  `tests/fixtures/match_7388878.json` + `tests/test_parse_match.py` pass.
+  Match 7388878 → runs 15(29b), 3x4, bowled, 7-0-38-2, SR/econ computed, plus
+  Toss/H-A/Venue/Margin that Notion never had.
+- **Sheets approach (Aadi instruction):** NO bound/redeployed Apps Script for this
+  project. Use the already-deployed generic `$CLAUDE_SHEETS_URL` proxy (works on
+  any sheet by ID, no redeploy) for read/write/append; stats tab = native sheet
+  formulas. "DIY in gsheets", nothing to redeploy.
+
 ## Next session priorities
-1. (Aadi) run `--login` to verify the session works; export Notion CSV.
-2. P2: single-scorecard parser (needs a real scorecard URL from Aadi to target).
-3. Create fresh Sheet + Log tab (headers = locked columns above); migrate CSV.
-4. P3 sheet writer + dedup; P4 discovery; P6 /cricket skill.
+1. P3: sheet writer + dedup by MatchID (use $CLAUDE_SHEETS_URL proxy append).
+2. Create fresh Sheet + Log tab (headers = parse_match.COLUMNS); migrate the 90
+   CSV rows; then append scraped games.
+3. P4: discover all Aadi's BNHCC match URLs (player 5464998) for full backfill.
+4. P6: wrap as /cricket skill (paste-link + on-demand sync).

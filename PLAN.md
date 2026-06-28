@@ -128,9 +128,24 @@ Copy BaianaBot's *actual* pattern (the plan previously misdescribed it):
   ponytail discovery task — don't over-design before seeing the real pages.)
 - Output: a de-duplicated set of scorecard URLs + their match IDs.
 
-### 5.3 Per-scorecard parsing
-For one `/website/results/<id>` page, Playwright renders the SCORECARD tab and
-we extract:
+### 5.3 Per-scorecard parsing — DONE via ResultsVault JSON (not HTML)
+**ARCHITECTURE CHANGE 2026-06-29 (supersedes the HTML-scraping idea in §3/§5.3).**
+The Play-Cricket scorecard tab is an embedded ECB widget that fetches structured
+JSON from the public ResultsVault API:
+`api.resultsvault.co.uk/rv/<org>/matches/<rvid>/?apiid=1003&strmflg=3`. Auth is a
+single `x-ias-api-request` header the widget generates. We don't reverse it: we
+load the results page logged-in, click the scorecard tab, and **harvest the
+widget's own JSON response** (`cricket_scraper.harvest_match_json`). Then
+`parse_match.parse_match()` turns it into the flat row.
+
+The JSON gives everything cleanly: batting (runs/balls/4s/6s/dismissal/position),
+bowling (overs/maidens/runs/wkts/wides/no-balls), fielding (structured
+`dismisser1_id` on opposition batsmen → catches), and full context (date, venue,
+grade, season, toss, result, margin, which XI). Verified end-to-end against match
+7388878. Fixture + parser test live in `tests/`. SR and economy are computed
+(not in the API); Drops and Notes are blank (not in the API — Aadi's own fields).
+
+Old text-extraction approach (kept for history):
 - **Match context**: date, competition (e.g. FRIENDLY), venue, home/away,
   which BNHCC XI (Sunday XI / Saturday 1st XI / etc.), opponent, toss, result,
   margin, team total/wickets/overs.
