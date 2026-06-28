@@ -85,9 +85,23 @@ code, plaintext password on disk). PLAN §5.1 corrected.
   any sheet by ID, no redeploy) for read/write/append; stats tab = native sheet
   formulas. "DIY in gsheets", nothing to redeploy.
 
-## Next session priorities
-1. P3: sheet writer + dedup by MatchID (use $CLAUDE_SHEETS_URL proxy append).
-2. Create fresh Sheet + Log tab (headers = parse_match.COLUMNS); migrate the 90
-   CSV rows; then append scraped games.
-3. P4: discover all Aadi's BNHCC match URLs (player 5464998) for full backfill.
-4. P6: wrap as /cricket skill (paste-link + on-demand sync).
+### 2026-06-29 (session 4) — P3 DONE
+- **Fresh Sheet created:** "🏏 Cricket Tracker", id
+  `1XyMrLZq5XSJ-65acMeqxAL42iFfp1jl0YhNc4GYNTRc`, tab **Log** (header =
+  parse_match.COLUMNS). https://docs.google.com/spreadsheets/d/1XyMrLZq5XSJ-65acMeqxAL42iFfp1jl0YhNc4GYNTRc/edit
+- **Migration done:** 85 historic Notion games written to Log (dates normalised
+  to YYYY-MM-DD → Sheets stores as real dates; extension cols blank; MatchID
+  blank for historic rows). Spot-checked (Fleet 42 game OK), runs to 2025-09-27.
+- **Sheet writer working + verified live:** `sheet.py` via $CLAUDE_SHEETS_URL
+  proxy (no redeploy). `append_game` dedups by MatchID — append #1 True, #2
+  False (idempotent). Scraped game 7388878 appended → 86 rows.
+- **Aadi instruction:** commit to git incrementally as we go.
+
+## Next priorities
+1. P4: discover all Aadi's BNHCC scorecard URLs (player 5464998) → bulk sync
+   (harvest+parse+append_game each, skipping dupes). Needs DOM recon of how
+   Play-Cricket lists a player's matches.
+2. Backfill MatchID onto historic rows where a Notion row matches a real
+   scorecard (plan §10.3 reconciliation) — deferred.
+3. P6: wrap as /cricket skill (paste-link + on-demand sync).
+4. Summary/stats tab: native sheet formulas (deferred, Log-only for now).
