@@ -60,36 +60,51 @@ def _strike_rate(runs, balls):
     return round(runs / balls * 100, 2)
 
 
-def _find_my_perfs(match, ext_id):
-    """Return (batting_perf, bowling_perf, my_rv_player_id). Either perf may be None."""
-    bat = bowl = None
-    rv_id = None
-    for team in match.get("MatchTeams", []):
+SURNAME = "Kalwani"
+
+
+def _in_teammembers(team):
+    for tm in team.get("TeamMembers", []):
+        nm = (tm.get("player_name") or "") + (tm.get("player_name2") or "") + (tm.get("player_name3") or "")
+        if SURNAME in nm:
+            return tm.get("player_id")
+    return None
+
+
+def _find_me(match, ext_id):
+    """Return (batting_perf, bowling_perf, rv_player_id, my_team, opp_team).
+
+    Finds the player by external_id in PlayerPerfs (gives bat/bowl lines), and
+    ALSO by surname in TeamMembers (so field-only / DNB games where he has no
+    perf are still recognised as his, with context + catches).
+    """
+    teams = match.get("MatchTeams", [])
+    bat = bowl = rv_id = mine = None
+    for team in teams:
         for inn in team.get("Innings", []):
             for pp in inn.get("PlayerPerfs", []):
                 if str(pp.get("external_id")) != str(ext_id):
                     continue
                 rv_id = pp.get("player_id", rv_id)
-                # batting perfs carry 'balls'/'fours'/batting 'number';
-                # bowling perfs carry 'overs'/'wickets'. They live in
-                # different innings (own innings = batting, opp = bowling).
-                if "overs" in pp or "wickets" in pp:
+                if "overs" in pp or "wickets" in pp:  # bowling perf (opp innings)
                     bowl = pp
-                else:
+                else:                                  # batting perf (own innings)
                     bat = pp
-    return bat, bowl, rv_id
-
-
-def _my_team_and_opponent(match, rv_player_id):
-    """(my_team, opponent_team) by which TeamMembers list holds my rv player_id."""
-    teams = match.get("MatchTeams", [])
-    mine = None
-    for t in teams:
-        if any(tm.get("player_id") == rv_player_id for tm in t.get("TeamMembers", [])):
-            mine = t
+    # my team: by rv_id in TeamMembers, else by surname
+    for team in teams:
+        tms = team.get("TeamMembers", [])
+        if (rv_id and any(tm.get("player_id") == rv_id for tm in tms)):
+            mine = team
             break
+    if mine is None:
+        for team in teams:
+            tm_id = _in_teammembers(team)
+            if tm_id is not None:
+                mine = team
+                rv_id = rv_id or tm_id
+                break
     opp = next((t for t in teams if t is not mine), None)
-    return mine, opp
+    return bat, bowl, rv_id, mine, opp
 
 
 def _count_catches(opp_team, rv_player_id):
@@ -124,13 +139,9 @@ def _how_out(bat):
 
 
 def player_in_match(match, ext_id=AADI_EXTERNAL_ID):
-    """True if the player has any batting/bowling perf in this match."""
-    for team in match.get("MatchTeams", []):
-        for inn in team.get("Innings", []):
-            for pp in inn.get("PlayerPerfs", []):
-                if str(pp.get("external_id")) == str(ext_id):
-                    return True
-    return False
+    """True if the player appears in this match (perf or squad)."""
+    _, _, _, mine, _ = _find_me(match, ext_id)
+    return mine is not None
 
 
 def parse_match(match, ext_id=AADI_EXTERNAL_ID, scorecard_url=BLANK):
@@ -139,8 +150,7 @@ def parse_match(match, ext_id=AADI_EXTERNAL_ID, scorecard_url=BLANK):
     Mirrors the Notion 'Cricket Log' columns first, then extends with the richer
     Play-Cricket fields. Absent disciplines (DNB / didn't bowl) are blank, not 0.
     """
-    bat, bowl, rv_id = _find_my_perfs(match, ext_id)
-    mine, opp = _my_team_and_opponent(match, rv_id)
+    bat, bowl, rv_id, mine, opp = _find_me(match, ext_id)
 
     # batting (blank if did not bat)
     batted = bool(bat) and bat.get("dismissal_id") != 0
