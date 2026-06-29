@@ -97,6 +97,24 @@ code, plaintext password on disk). PLAN §5.1 corrected.
   False (idempotent). Scraped game 7388878 appended → 86 rows.
 - **Aadi instruction:** commit to git incrementally as we go.
 
+### 2026-06-29 (session 5) — P4 harvester + sync working (discovery still partial)
+- **Two scorecard widget types** (key gotcha): league result pages fire the
+  `/rv/mappings/` call on load; older friendly pages only fire it after the
+  Scorecard tab is clicked. Harvester now: capture mapping request header
+  (`x-ias-api-request`) + response (`object_id1` = RV match id), then fetch
+  `/rv/130000/matches/<rvid>/` directly. Best-effort tab click covers old widget.
+  Fresh page per harvest + 1 retry. Verified live on friendly (7388878, 7276686)
+  AND league (7276745: Div 6E, 2 catches, won by 83).
+- **`--sync` works:** added 7276686 + 7276745 (post-cutoff, deduped by MatchID,
+  cutoff=2025-09-26). Sheet now has 88 rows (85 migrated + 3 synced).
+- **Known limits:** (a) ~20 of 45 candidate pages have NO published scorecard
+  widget (no data-match-id) → `no_scorecard` skip, nothing to fetch. Some are
+  recent games Aadi played (e.g. 7238048, he scored 3 per player_stats) → a real
+  gap with no JSON source on the club page. (b) Discovery is partial:
+  player_stats links are per-SEASON-SUMMARY not per-game, and /Matches is JS/AJAX
+  (uncracked). So full all-time/league auto-discovery NOT solved — see
+  OPEN_QUESTIONS.md Q1. Paste-link / `--sync --ids` is the reliable add path.
+
 ## Next priorities
 1. P4: discover all Aadi's BNHCC scorecard URLs (player 5464998) → bulk sync
    (harvest+parse+append_game each, skipping dupes). Needs DOM recon of how
