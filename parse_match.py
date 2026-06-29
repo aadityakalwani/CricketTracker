@@ -120,8 +120,9 @@ def _count_catches(opp_team, rv_player_id):
 
 
 def _clean_team_label(label):
-    """'Sunday XI' -> 'Sunday' (drop the trailing 'XI' to match Aadi's shorthand)."""
-    return re.sub(r"\s*XI$", "", label or "").strip()
+    """'Sunday XI' -> 'Sunday', 'Under 15B' -> 'U15B' (match Aadi's shorthand)."""
+    s = re.sub(r"\s*XI$", "", label or "").strip()
+    return re.sub(r"^Under ", "U", s)
 
 
 def _how_out(bat):
