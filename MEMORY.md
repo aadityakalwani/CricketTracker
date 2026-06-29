@@ -143,7 +143,23 @@ code, plaintext password on disk). PLAN §5.1 corrected.
   by-season uses year(Date) so handwritten rows (blank Season col) are included.
 - Sheet now: Log (94 games) + Summary. Project essentially complete bar P6.
 
-## Next priorities
+### 2026-06-29 (session 8) — P6 /cricket skill DONE — PROJECT COMPLETE
+- Skill at `~/.claude/skills/cricket/SKILL.md` (self-recognising; triggers on
+  "had cricket vs X", pasted result URL, "update my cricket sheet", stats Qs).
+- CLI added to cricket_scraper.py: `--add <url> --note "..."` (harvest+note+
+  dedup-append), `--find [opponent]` (list recent unlogged games via homepage
+  widget). Both tested. Notes use Aadi's verbatim words.
+- All phases P0-P6 done. Sheet: Log (94 games) + Summary (live stats).
+- Known minor: --add can't update a note on an ALREADY-logged game (dedup skips);
+  would need an --update path if wanted later.
+
+## Next priorities (project complete; optional polish only)
+- Aadi: `Format ▸ Convert to table` + `View ▸ Freeze ▸ 1 row` on both tabs.
+- Optional: --update-note for existing games; crack /Matches for full auto-
+  discovery (deferred, low value — Aadi plays few games + knows URLs).
+- 2 games left handwritten-only: 7238048 (no scorecard), 5099973 (not in squad).
+
+## Earlier priorities (superseded)
 1. P4: discover all Aadi's BNHCC scorecard URLs (player 5464998) → bulk sync
    (harvest+parse+append_game each, skipping dupes). Needs DOM recon of how
    Play-Cricket lists a player's matches.
