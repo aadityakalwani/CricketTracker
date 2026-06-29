@@ -195,11 +195,21 @@ def harvest_match_json(url: str) -> dict:
             ctx.close()
 
 
-def discover_ids(page) -> set:
-    """Collect candidate scorecard ids from the player_stats pages + homepage."""
+NOTE_COL = "Notes / Memory Trigger / Game Review"
+DEFAULT_SID = "1XyMrLZq5XSJ-65acMeqxAL42iFfp1jl0YhNc4GYNTRc"
+
+
+def _sid():
+    return os.environ.get("CRICKET_SHEET_ID", DEFAULT_SID)
+
+
+def discover_ids(page, recent_only: bool = False) -> set:
+    """Collect candidate scorecard ids. recent_only -> just the homepage results
+    widget (newest games), which is the fast path for 'add today's game'."""
     import re
     ids = set()
-    for url in DISCOVERY_PAGES:
+    pages = ["https://bnhcc.play-cricket.com/"] if recent_only else DISCOVERY_PAGES
+    for url in pages:
         try:
             page.goto(url, wait_until="domcontentloaded")
             page.wait_for_timeout(2500)
@@ -215,6 +225,54 @@ def run_game(url: str) -> int:
     from parse_match import parse_match
     row = parse_match(harvest_match_json(url), scorecard_url=url)
     print(json.dumps(row, indent=2, ensure_ascii=False))
+    return 0
+
+
+def run_add(url: str, note: str = "") -> int:
+    """Harvest one scorecard, attach an optional note, dedup-append to the Sheet."""
+    from parse_match import parse_match
+    import sheet
+    row = parse_match(harvest_match_json(url), scorecard_url=url)
+    if note:
+        row[NOTE_COL] = note
+    ok = sheet.append_game(_sid(), row)
+    bowl = f", {row['Wickets']}/{row['Runs Given']}" if row["Wickets"] != "" else ""
+    bat = f"{row['Runs']} ({row['Balls']}b)" if row["Runs"] != "" else "DNB"
+    print(f"{'ADDED' if ok else 'ALREADY IN SHEET'}: {row['Date']} {row['Team']} v {row['Opposition']} — {bat}{bowl}, {row['Catches']} ct")
+    if note:
+        print(f"note: {note}")
+    return 0
+
+
+def run_find(opponent: str = "") -> int:
+    """List Aadi's recent games (optionally filtered by opponent) not yet in the
+    Sheet, with their scorecard URLs — for picking which to --add."""
+    from parse_match import parse_match, player_in_match
+    import sheet
+    known = sheet.existing_match_ids(_sid())
+    opp = opponent.lower()
+    hits = 0
+    with sync_playwright() as p:
+        ctx = p.chromium.launch_persistent_context(headless=True, **_LAUNCH)
+        page = ctx.pages[0] if ctx.pages else ctx.new_page()
+        ids = discover_ids(page, recent_only=True)
+        for mid in sorted(ids, reverse=True):
+            if mid in known:
+                continue
+            try:
+                match = _harvest_fresh(ctx, RESULT_URL.format(mid))
+            except Exception:
+                continue
+            if not player_in_match(match):
+                continue
+            row = parse_match(match, scorecard_url=RESULT_URL.format(mid))
+            if opp and opp not in row["Opposition"].lower():
+                continue
+            hits += 1
+            print(f"{row['Date']} {row['Team']} v {row['Opposition']}  ->  {RESULT_URL.format(mid)}")
+        ctx.close()
+    if not hits:
+        print(f"no recent unlogged game found{' vs ' + opponent if opponent else ''}.")
     return 0
 
 
@@ -302,6 +360,9 @@ def main() -> int:
     ap.add_argument("--login", action="store_true", help="sign in by hand once")
     ap.add_argument("--check", action="store_true", help="report whether the saved session is logged in")
     ap.add_argument("--game", metavar="URL", help="scrape + parse one scorecard, print the row")
+    ap.add_argument("--add", metavar="URL", help="harvest a scorecard + append to the Sheet")
+    ap.add_argument("--note", default="", help="note to attach with --add")
+    ap.add_argument("--find", metavar="OPPONENT", nargs="?", const="", help="list recent unlogged games (optionally by opponent)")
     ap.add_argument("--sync", action="store_true", help="discover + append new games to the Sheet")
     ap.add_argument("--ids", metavar="A,B,C", help="extra scorecard ids to include in --sync")
     ap.add_argument("--dump", metavar="URL", help="recon: save a page's HTML + screenshot")
@@ -313,6 +374,10 @@ def main() -> int:
         return run_check()
     if args.game:
         return run_game(args.game)
+    if args.add:
+        return run_add(args.add, args.note)
+    if args.find is not None:
+        return run_find(args.find)
     if args.sync:
         extra = [s.strip() for s in (args.ids or "").split(",") if s.strip()]
         return run_sync(extra_ids=extra)
