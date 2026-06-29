@@ -84,6 +84,32 @@ def existing_match_ids(sid, tab=TAB):
     return out
 
 
+def _date_only(v):
+    """'2025-09-27T00:00:00.000Z' or '2025-09-27' -> '2025-09-27'."""
+    return str(v or "")[:10]
+
+
+def cutoff_date(sid, tab=TAB):
+    """Latest Date among rows with a BLANK MatchID (the migrated historic rows).
+
+    A full-history sync would re-add these (they have no MatchID to dedup on), so
+    the sync only appends games dated after this. Returns '' if none.
+    """
+    a = _values(read_range(sid, "A2:A", tab=tab))   # Date
+    v = _values(read_range(sid, f"{_col_letter(COLUMNS.index('MatchID'))}2:"
+                                f"{_col_letter(COLUMNS.index('MatchID'))}", tab=tab))
+    best = ""
+    for i, drow in enumerate(a):
+        d = _date_only(drow[0] if isinstance(drow, list) and drow else drow)
+        mid = ""
+        if i < len(v):
+            cell = v[i]
+            mid = (cell[0] if isinstance(cell, list) and cell else cell) or ""
+        if d and not mid:
+            best = max(best, d)
+    return best
+
+
 def append_game(sid, row, tab=TAB, known=None):
     """Append one parsed row, skipping if its MatchID is already present.
 

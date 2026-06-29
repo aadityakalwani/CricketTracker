@@ -123,6 +123,16 @@ def _how_out(bat):
     return label or (bat.get("dismissal_text") or BLANK)
 
 
+def player_in_match(match, ext_id=AADI_EXTERNAL_ID):
+    """True if the player has any batting/bowling perf in this match."""
+    for team in match.get("MatchTeams", []):
+        for inn in team.get("Innings", []):
+            for pp in inn.get("PlayerPerfs", []):
+                if str(pp.get("external_id")) == str(ext_id):
+                    return True
+    return False
+
+
 def parse_match(match, ext_id=AADI_EXTERNAL_ID, scorecard_url=BLANK):
     """ResultsVault match dict -> one flat row dict keyed by Sheet columns.
 
