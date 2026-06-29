@@ -137,6 +137,15 @@ def _harvest_on_page(page, url: str) -> dict:
     page.on("response", on_resp)
     try:
         page.goto(url, wait_until="domcontentloaded")
+        # Two widget flavours: league pages fire the mapping on load; older
+        # friendly pages only fire it once the Scorecard tab is activated. Click
+        # best-effort to cover the latter; harmless where the tab is absent.
+        for sel in ("#iasScorecardtab-tab", "a[href='#iasScorecardtab']", "text=Scorecard"):
+            try:
+                page.click(sel, timeout=2000)
+                break
+            except Exception:
+                continue
         for _ in range(24):  # poll up to ~12s for the mapping call
             if cap.get("hdr") and cap.get("map"):
                 break
@@ -161,13 +170,27 @@ def _harvest_on_page(page, url: str) -> dict:
         page.remove_listener("response", on_resp)
 
 
+def _harvest_fresh(ctx, url: str, retries: int = 1) -> dict:
+    """Harvest on a brand-new page (avoids stale widget-JS state that makes a
+    reused page intermittently miss the mapping call), retrying once."""
+    last = None
+    for _ in range(retries + 1):
+        page = ctx.new_page()
+        try:
+            return _harvest_on_page(page, url)
+        except Exception as e:
+            last = e
+        finally:
+            page.close()
+    raise last
+
+
 def harvest_match_json(url: str) -> dict:
     """Standalone (own browser) harvest of one match's JSON."""
     with sync_playwright() as p:
         ctx = p.chromium.launch_persistent_context(headless=True, **_LAUNCH)
-        page = ctx.pages[0] if ctx.pages else ctx.new_page()
         try:
-            return _harvest_on_page(page, url)
+            return _harvest_fresh(ctx, url)
         finally:
             ctx.close()
 
@@ -207,7 +230,7 @@ def run_sync(extra_ids=None) -> int:
     print(f"[sync] sheet has {len(known)} MatchIDs; cutoff (latest un-IDed row) = {cutoff or 'none'}")
 
     added = []
-    skipped = {"dup": 0, "historic": 0, "not_aadi": 0, "error": 0}
+    skipped = {"dup": 0, "historic": 0, "not_aadi": 0, "no_scorecard": 0, "error": 0}
     with sync_playwright() as p:
         ctx = p.chromium.launch_persistent_context(headless=True, **_LAUNCH)
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
@@ -219,10 +242,15 @@ def run_sync(extra_ids=None) -> int:
                 skipped["dup"] += 1
                 continue
             try:
-                match = _harvest_on_page(page, RESULT_URL.format(mid))
+                match = _harvest_fresh(ctx, RESULT_URL.format(mid))
             except Exception as e:
-                skipped["error"] += 1
-                print(f"[sync] {mid}: harvest failed ({e})")
+                # Pages without a published scorecard widget have no JSON to fetch
+                # — a normal skip, not a failure.
+                if "mapping not captured" in str(e):
+                    skipped["no_scorecard"] += 1
+                else:
+                    skipped["error"] += 1
+                    print(f"[sync] {mid}: harvest failed ({e})")
                 continue
             if not player_in_match(match):
                 skipped["not_aadi"] += 1
@@ -235,9 +263,9 @@ def run_sync(extra_ids=None) -> int:
                 added.append((row["Date"], row["Team"], row["Opposition"], mid))
                 print(f"[sync] + added {row['Date']} {row['Team']} v {row['Opposition']} ({mid})")
         ctx.close()
-    print(f"\n[sync] done. added={len(added)} "
-          f"dup={skipped['dup']} historic={skipped['historic']} "
-          f"not_aadi={skipped['not_aadi']} error={skipped['error']}")
+    print(f"\n[sync] done. added={len(added)} dup={skipped['dup']} "
+          f"historic={skipped['historic']} not_aadi={skipped['not_aadi']} "
+          f"no_scorecard={skipped['no_scorecard']} error={skipped['error']}")
     return 0
 
 
