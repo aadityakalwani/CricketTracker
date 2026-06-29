@@ -131,6 +131,18 @@ code, plaintext password on disk). PLAN §5.1 corrected.
 - **Known caveat:** notes merge by exact date; where Aadi's handwritten date was
   a day off, a note can sit on the adjacent game. Stats always accurate.
 
+### 2026-06-29 (session 7) — Summary/stats tab DONE
+- **build_summary.py** builds a "Summary" tab: native sheet formulas over Log
+  (no Apps Script). Batting (innings/NO/runs/avg/HS/SR/4s/6s/50s/100s/ducks),
+  Bowling (overs via balls-conversion/wkts/runs/maidens/avg/econ/SR/best/wides/
+  nb), Fielding (catches/drops), + by-season (group year(date)) and by-team
+  QUERY tables.
+- Headline career: 604 runs @16.32 (HS 57, SR 80, 2 fifties); 61 wkts @20.03
+  (econ 5.25, best 5/12); 37 catches; across 94 games.
+- Fixed: team labels normalised "Under 15B"->"U15B" (parse_match + in-place);
+  by-season uses year(Date) so handwritten rows (blank Season col) are included.
+- Sheet now: Log (94 games) + Summary. Project essentially complete bar P6.
+
 ## Next priorities
 1. P4: discover all Aadi's BNHCC scorecard URLs (player 5464998) → bulk sync
    (harvest+parse+append_game each, skipping dupes). Needs DOM recon of how
