@@ -115,6 +115,22 @@ code, plaintext password on disk). PLAN §5.1 corrected.
   (uncracked). So full all-time/league auto-discovery NOT solved — see
   OPEN_QUESTIONS.md Q1. Paste-link / `--sync --ids` is the reliable add path.
 
+### 2026-06-29 (session 6) — FULL CAREER BACKFILL done
+- Aadi gave URLs for all ~84 career games (2021-2026). Decision: scraped
+  scorecard data is authoritative; Notion was rough ("barbs"). Backfilled all.
+- **backfill.py** (async, one logged-in browser + N tabs; subagents can't help —
+  they'd fight the single profile lock). conc=4 reliable; conc=8 caused timeouts.
+- **parse_match fix:** detect player via TeamMembers surname too → field-only/DNB
+  games (21 of them) now captured with context + catches, not just bat/bowl.
+- **reconcile.py:** scraped stats + Notion notes/video/drops merged BY DATE;
+  no-scorecard games kept as handwritten rows; Log rewritten sorted by date.
+- **Result: Log = 94 games** (52 scorecard-accurate w/ MatchID + 42
+  handwritten-only). 70 have notes. 31 games have NO published scorecard
+  (kept handwritten). 1 not_aadi (5099973 — harvested but no Kalwani in
+  perfs/squad; maybe wrong URL or name variant; left out, kept its Notion row).
+- **Known caveat:** notes merge by exact date; where Aadi's handwritten date was
+  a day off, a note can sit on the adjacent game. Stats always accurate.
+
 ## Next priorities
 1. P4: discover all Aadi's BNHCC scorecard URLs (player 5464998) → bulk sync
    (harvest+parse+append_game each, skipping dupes). Needs DOM recon of how
